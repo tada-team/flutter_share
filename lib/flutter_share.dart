@@ -10,9 +10,9 @@ class ShareType {
 
   const ShareType._internal(this._type);
 
-  static ShareType fromMimeType(String mimeType) {
+  static ShareType fromMimeType(String? mimeType) {
     if (mimeType == TYPE_PLAIN_TEXT.toString()) return TYPE_PLAIN_TEXT;
-    if (mimeType.contains("image")) return TYPE_IMAGE;
+    if (mimeType!.contains("image")) return TYPE_IMAGE;
     return TYPE_FILE;
   }
 
@@ -30,11 +30,11 @@ class Share {
   static const String TYPE = "type";
   static const String IS_MULTIPLE = "is_multiple";
 
-  final ShareType mimeType;
-  final String title;
-  final String text;
+  final ShareType? mimeType;
+  final String? title;
+  final String? text;
   final String path;
-  final String authority;
+  final String? authority;
   final bool isErasingRequired;
   final List<Share> shares;
 
@@ -47,7 +47,7 @@ class Share {
         this.isErasingRequired = false,
         this.shares = const [];
 
-  const Share.plainText({this.title, this.text})
+  const Share.plainText({this.title, required String this.text})
       : assert(text != null),
         this.mimeType = ShareType.TYPE_PLAIN_TEXT,
         this.path = '',
@@ -56,9 +56,9 @@ class Share {
         this.shares = const [];
 
   const Share.file({
-    this.mimeType = ShareType.TYPE_FILE,
+    ShareType this.mimeType = ShareType.TYPE_FILE,
     this.title,
-    this.path,
+    required this.path,
     this.authority,
     this.text = '',
     this.isErasingRequired = false,
@@ -67,9 +67,9 @@ class Share {
         this.shares = const [];
 
   const Share.image({
-    this.mimeType = ShareType.TYPE_IMAGE,
+    ShareType this.mimeType = ShareType.TYPE_IMAGE,
     this.title,
-    this.path,
+    required this.path,
     this.authority,
     this.text = '',
     this.isErasingRequired = false,
@@ -78,9 +78,9 @@ class Share {
         this.shares = const [];
 
   const Share.multiple({
-    this.mimeType = ShareType.TYPE_FILE,
+    ShareType this.mimeType = ShareType.TYPE_FILE,
     this.title,
-    this.shares,
+    required this.shares,
     this.authority,
     this.isErasingRequired = false,
   })  : assert(mimeType != null),

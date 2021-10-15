@@ -4,15 +4,12 @@ import 'dart:convert';
 import 'package:flutter/services.dart';
 
 class FlutterShareReceiverIOS {
-  static const MethodChannel _mChannel =
-      const MethodChannel('plugins.flutter.io/share');
-  static const EventChannel _eChannelMedia =
-      const EventChannel("receive_sharing_intent/events-media");
-  static const EventChannel _eChannelLink =
-      const EventChannel("receive_sharing_intent/events-text");
+  static const MethodChannel _mChannel = const MethodChannel('plugins.flutter.io/share');
+  static const EventChannel _eChannelMedia = const EventChannel("receive_sharing_intent/events-media");
+  static const EventChannel _eChannelLink = const EventChannel("receive_sharing_intent/events-text");
 
-  static Stream<List<SharedMediaFile>> _streamMedia;
-  static Stream<String> _streamLink;
+  static Stream<List<SharedMediaFile>?>? _streamMedia;
+  static Stream<String?>? _streamLink;
 
   /// Returns a [Future], which completes to one of the following:
   ///
@@ -21,20 +18,18 @@ class FlutterShareReceiverIOS {
   ///
   /// NOTE. The returned media on iOS (iOS ONLY) is already copied to a temp folder.
   /// So, you need to delete the file after you finish using it
-  static Future<List<SharedMediaFile>> getInitialMedia() async {
-    final String json = await _mChannel.invokeMethod('getInitialMedia');
+  static Future<List<SharedMediaFile>?> getInitialMedia() async {
+    final String? json = await _mChannel.invokeMethod('getInitialMedia');
     if (json == null) return null;
     final encoded = jsonDecode(json);
-    return encoded
-        .map<SharedMediaFile>((file) => SharedMediaFile.fromJson(file))
-        .toList();
+    return encoded.map<SharedMediaFile>((file) => SharedMediaFile.fromJson(file)).toList();
   }
 
   /// Returns a [Future], which completes to one of the following:
   ///
   ///   * the initially stored link (possibly null), on successful invocation;
   ///   * a [PlatformException], if the invocation failed in the platform plugin.
-  static Future<String> getInitialText() async {
+  static Future<String?> getInitialText() async {
     return await _mChannel.invokeMethod('getInitialText');
   }
 
@@ -43,8 +38,8 @@ class FlutterShareReceiverIOS {
   ///
   /// If the link is not valid as a URI or URI reference,
   /// a [FormatException] is thrown.
-  static Future<Uri> getInitialTextAsUri() async {
-    final String data = await getInitialText();
+  static Future<Uri?> getInitialTextAsUri() async {
+    final String? data = await getInitialText();
     if (data == null) return null;
     return Uri.parse(data);
   }
@@ -65,26 +60,20 @@ class FlutterShareReceiverIOS {
   ///
   /// If the app was started by a link intent or user activity the stream will
   /// not emit that initial one - query either the `getInitialMedia` instead.
-  static Stream<List<SharedMediaFile>> getMediaStream() {
-    if (_streamMedia == null) {
-      final stream =
-          _eChannelMedia.receiveBroadcastStream("media").cast<String>();
-      _streamMedia = stream.transform<List<SharedMediaFile>>(
-        new StreamTransformer<String, List<SharedMediaFile>>.fromHandlers(
-          handleData: (data, sink) {
-            if (data == null) {
-              sink.add(null);
-            } else {
-              final encoded = jsonDecode(data);
-              sink.add(encoded
-                  .map<SharedMediaFile>(
-                      (file) => SharedMediaFile.fromJson(file))
-                  .toList());
-            }
-          },
-        ),
-      );
-    }
+  static Stream<List<SharedMediaFile>?>? getMediaStream() {
+    _streamMedia ??= _eChannelMedia.receiveBroadcastStream("media").cast<String?>().transform<List<SharedMediaFile>?>(
+      new StreamTransformer<String?, List<SharedMediaFile>?>.fromHandlers(
+        handleData: (data, sink) {
+          if (data == null) {
+            sink.add(null);
+          } else {
+            final encoded = jsonDecode(data);
+            sink.add(encoded.map<SharedMediaFile>((file) => SharedMediaFile.fromJson(file)).toList());
+          }
+        },
+      ),
+    );
+
     return _streamMedia;
   }
 
@@ -104,11 +93,9 @@ class FlutterShareReceiverIOS {
   ///
   /// If the app was started by a link intent or user activity the stream will
   /// not emit that initial one - query either the `getInitialText` instead.
-  static Stream<String> getTextStream() {
-    if (_streamLink == null) {
-      _streamLink = _eChannelLink.receiveBroadcastStream("text").cast<String>();
-    }
-    return _streamLink;
+  static Stream<String?> getTextStream() {
+    _streamLink = _eChannelLink.receiveBroadcastStream("text").cast<String?>();
+    return _streamLink ?? Stream.empty();
   }
 
   /// A convenience transformation of the stream to a `Stream<Uri>`.
@@ -120,9 +107,9 @@ class FlutterShareReceiverIOS {
   ///
   /// If the app was started by a share intent or user activity the stream will
   /// not emit that initial uri - query either the `getInitialTextAsUri` instead.
-  static Stream<Uri> getTextStreamAsUri() {
-    return getTextStream().transform<Uri>(
-      new StreamTransformer<String, Uri>.fromHandlers(
+  static Stream<Uri?> getTextStreamAsUri() {
+    return getTextStream().transform<Uri?>(
+      new StreamTransformer<String?, Uri?>.fromHandlers(
         handleData: (data, sink) {
           if (data == null) {
             sink.add(null);
@@ -147,10 +134,10 @@ class SharedMediaFile {
   final String path;
 
   /// Video thumbnail
-  final String thumbnail;
+  final String? thumbnail;
 
   /// Video duration in milliseconds
-  final int duration;
+  final int? duration;
 
   /// Whether its a video or image
   final SharedMediaType type;

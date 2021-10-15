@@ -1,0 +1,6 @@
+# DO NOT DELETE THIS EMPTY FILE
+#
+# But you can edit it and after that remove these comments.
+# This file is requred to suppress the analyzer bug with include statement
+# (see this issue: https://github.com/dart-lang/sdk/issues/42910) and
+# prevent analyzer from inheriting analysis_options.yaml from the root of the project.

@@ -48,8 +48,7 @@ class Share {
         this.shares = const [];
 
   const Share.plainText({this.title, required String this.text})
-      : assert(text != null),
-        this.mimeType = ShareType.TYPE_PLAIN_TEXT,
+      : this.mimeType = ShareType.TYPE_PLAIN_TEXT,
         this.path = '',
         this.authority = '',
         this.isErasingRequired = false,
@@ -62,9 +61,7 @@ class Share {
     this.authority,
     this.text = '',
     this.isErasingRequired = false,
-  })  : assert(mimeType != null),
-        assert(path != null),
-        this.shares = const [];
+  }) : this.shares = const [];
 
   const Share.image({
     ShareType this.mimeType = ShareType.TYPE_IMAGE,
@@ -73,9 +70,7 @@ class Share {
     this.authority,
     this.text = '',
     this.isErasingRequired = false,
-  })  : assert(mimeType != null),
-        assert(path != null),
-        this.shares = const [];
+  }) : this.shares = const [];
 
   const Share.multiple({
     ShareType this.mimeType = ShareType.TYPE_FILE,
@@ -83,18 +78,15 @@ class Share {
     required this.shares,
     this.authority,
     this.isErasingRequired = false,
-  })  : assert(mimeType != null),
-        assert(shares != null),
-        this.text = '',
+  })  : this.text = '',
         this.path = '';
 
-  // ignore: prefer_constructors_over_static_methods
   static Share fromReceived(Map received) {
     assert(received.containsKey(TYPE));
 
     ShareType type = ShareType.fromMimeType(received[TYPE]);
     if (received.containsKey(IS_MULTIPLE)) {
-      List<Share> receivedShares = new List();
+      List<Share> receivedShares = [];
       for (var i = 0; i < received.length - 2; i++) {
         receivedShares.add(Share.file(path: received["$i"]));
       }
@@ -108,7 +100,6 @@ class Share {
     }
   }
 
-  // ignore: missing_return, prefer_constructors_over_static_methods
   static Share _fromReceivedSingle(Map received, ShareType type) {
     switch (type) {
       case ShareType.TYPE_PLAIN_TEXT:
@@ -117,8 +108,6 @@ class Share {
         } else {
           return Share.plainText(text: received[TEXT]);
         }
-        break;
-
       case ShareType.TYPE_IMAGE:
         if (received.containsKey(TITLE)) {
           if (received.containsKey(TEXT)) {
@@ -129,8 +118,6 @@ class Share {
         } else {
           return Share.image(path: received[PATH]);
         }
-        break;
-
       case ShareType.TYPE_FILE:
         if (received.containsKey(TITLE)) {
           if (received.containsKey(TEXT)) {
@@ -141,7 +128,8 @@ class Share {
         } else {
           return Share.file(path: received[PATH]);
         }
-        break;
+      default:
+        throw Exception("Unknown share type: $type");
     }
   }
 

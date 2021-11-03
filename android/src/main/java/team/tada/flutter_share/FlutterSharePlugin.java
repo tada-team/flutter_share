@@ -1,5 +1,6 @@
 package team.tada.flutter_share;
 
+import android.app.Activity;
 import android.content.Context;
 import android.content.Intent;
 import android.content.pm.PackageManager;
@@ -18,15 +19,17 @@ import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 
-import androidx.annotation.RequiresApi;
+import androidx.annotation.NonNull;
 import androidx.core.content.FileProvider;
 
+import io.flutter.embedding.engine.plugins.FlutterPlugin;
+import io.flutter.embedding.engine.plugins.activity.ActivityAware;
+import io.flutter.embedding.engine.plugins.activity.ActivityPluginBinding;
 import io.flutter.plugin.common.MethodCall;
 import io.flutter.plugin.common.MethodChannel;
 import io.flutter.plugin.common.PluginRegistry;
-import io.flutter.plugin.common.PluginRegistry.Registrar;
 
-public class FlutterSharePlugin implements MethodChannel.MethodCallHandler, PluginRegistry.NewIntentListener {
+public class FlutterSharePlugin implements MethodChannel.MethodCallHandler, FlutterPlugin, ActivityAware {
 
     private static final String TAG = "FlutterSharePlugin";
     private static final String TITLE = "title";
@@ -37,31 +40,63 @@ public class FlutterSharePlugin implements MethodChannel.MethodCallHandler, Plug
     private static final String IS_MULTIPLE = "is_multiple";
     private static final String CHANNEL = "plugins.flutter.io/share";
 
-    private final Registrar mRegistrar;
-    private final MethodChannel methodChannel;
+    private Activity activity;
+    private Context context;
+    private MethodChannel methodChannel;
 
-    private FlutterSharePlugin(Registrar registrar, MethodChannel methodChannel) {
-        this.mRegistrar = registrar;
-        this.methodChannel = methodChannel;
-    }
+    @Override
+    public void onAttachedToEngine(@NonNull FlutterPluginBinding binding) {
+        context = binding.getApplicationContext();
 
-    public static void registerWith(Registrar registrar) {
-        MethodChannel methodChannel = new MethodChannel(registrar.messenger(), CHANNEL);
+        methodChannel = new MethodChannel(binding.getBinaryMessenger(), CHANNEL);
 
-        FlutterSharePlugin plugin = new FlutterSharePlugin(registrar, methodChannel);
-
-        registrar.addNewIntentListener(plugin);
-
-        methodChannel.setMethodCallHandler(plugin);
+        methodChannel.setMethodCallHandler(this);
     }
 
     @Override
-    public void onMethodCall(MethodCall call, MethodChannel.Result result) {
+    public void onDetachedFromEngine(@NonNull FlutterPluginBinding binding) {
+
+    }
+
+    @Override
+    public void onAttachedToActivity(@NonNull ActivityPluginBinding binding) {
+        onActivityUpdated(binding);
+    }
+
+    @Override
+    public void onDetachedFromActivityForConfigChanges() {
+
+    }
+
+    @Override
+    public void onReattachedToActivityForConfigChanges(@NonNull ActivityPluginBinding binding) {
+        onActivityUpdated(binding);
+    }
+
+    private void onActivityUpdated(@NonNull ActivityPluginBinding binding) {
+        binding.addOnNewIntentListener(new PluginRegistry.NewIntentListener() {
+            @Override
+            public boolean onNewIntent(Intent intent) {
+                processShareIntent(intent);
+                return false;
+            }
+        });
+
+        activity = binding.getActivity();
+    }
+
+    @Override
+    public void onDetachedFromActivity() {
+
+    }
+
+    @Override
+    public void onMethodCall(MethodCall call, @NonNull MethodChannel.Result result) {
         if (call.method.equals("configure")) {
             Log.i(TAG, "called configure");
 
-            if (mRegistrar.activity() != null) {
-                Intent intent = mRegistrar.activity().getIntent();
+            if (activity !=null){
+                Intent intent = activity.getIntent();
                 if (intent != null && intent.getAction() != null) {
                     String intentAction = intent.getAction();
 
@@ -82,7 +117,7 @@ public class FlutterSharePlugin implements MethodChannel.MethodCallHandler, Plug
                 throw new IllegalArgumentException("Map argument expected");
             }
             // Android does not support showing the share sheet at a particular point on screen.
-            if (call.argument(IS_MULTIPLE)) {
+            if (Boolean.TRUE.equals(call.argument(IS_MULTIPLE))) {
                 ArrayList<Uri> dataList = new ArrayList<>();
                 for (int i = 0; call.hasArgument(Integer.toString(i)); i++) {
                     dataList.add(Uri.parse((String) call.argument(Integer.toString(i))));
@@ -138,8 +173,6 @@ public class FlutterSharePlugin implements MethodChannel.MethodCallHandler, Plug
             if (authority.isEmpty()) {
                 uri = Uri.parse(path);
             } else {
-                Context context = mRegistrar.context();
-
                 File file = new File(path);
                 uri = FileProvider.getUriForFile(context, authority, file);
 
@@ -166,11 +199,11 @@ public class FlutterSharePlugin implements MethodChannel.MethodCallHandler, Plug
         }
 
         Intent chooserIntent = Intent.createChooser(shareIntent, null /* dialog title optional */);
-        if (mRegistrar.activity() != null) {
-            mRegistrar.activity().startActivity(chooserIntent);
+        if (activity != null) {
+            activity.startActivity(chooserIntent);
         } else {
             chooserIntent.addFlags(Intent.FLAG_ACTIVITY_NEW_TASK);
-            mRegistrar.context().startActivity(chooserIntent);
+            context.startActivity(chooserIntent);
         }
     }
 
@@ -193,15 +226,15 @@ public class FlutterSharePlugin implements MethodChannel.MethodCallHandler, Plug
         shareIntent.setType(mimeType);
 
         Intent chooserIntent = Intent.createChooser(shareIntent, null /* dialog title optional */);
-        if (mRegistrar.activity() != null) {
-            mRegistrar.activity().startActivity(chooserIntent);
+        if (activity != null) {
+            activity.startActivity(chooserIntent);
         } else {
             chooserIntent.addFlags(Intent.FLAG_ACTIVITY_NEW_TASK);
-            mRegistrar.context().startActivity(chooserIntent);
+            context.startActivity(chooserIntent);
         }
     }
 
-    private boolean processShareIntent(Intent intent) {
+    private void processShareIntent(Intent intent) {
         String action = intent.getAction();
         String type = intent.getType();
 
@@ -235,10 +268,10 @@ public class FlutterSharePlugin implements MethodChannel.MethodCallHandler, Plug
                 Log.i(TAG, "receiving shared file: " + sharedUri);
 
                 if (sharedTitle == null || sharedTitle.isEmpty()) {
-                    sharedTitle = this.getFileName(mRegistrar.context(), sharedUri);
+                    sharedTitle = this.getFileName(context, sharedUri);
                 }
 
-                String path = FileHelper.getPath(mRegistrar.context(), sharedUri);
+                String path = FileHelper.getPath(context, sharedUri);
                 if (path != null) {
                     params.put(TYPE, type);
                     params.put(PATH, path);
@@ -264,7 +297,7 @@ public class FlutterSharePlugin implements MethodChannel.MethodCallHandler, Plug
 
             for (int i = 0; i < uris.size(); i++) {
                 Uri sharedUri = uris.get(i);
-                String path = FileHelper.getPath(mRegistrar.context(), sharedUri);
+                String path = FileHelper.getPath(context, sharedUri);
 
                 if (path != null) params.put(Integer.toString(i), path);
             }
@@ -273,8 +306,6 @@ public class FlutterSharePlugin implements MethodChannel.MethodCallHandler, Plug
         Log.i(TAG, params.toString());
 
         methodChannel.invokeMethod("onReceive", params);
-
-        return false;
     }
 
     private boolean isVirtualFile(Context context, Uri uri) {
@@ -293,7 +324,7 @@ public class FlutterSharePlugin implements MethodChannel.MethodCallHandler, Plug
 
         Cursor cursor = context.getContentResolver().query(
                 uri,
-                new String[] { DocumentsContract.Document.COLUMN_FLAGS },
+                new String[]{DocumentsContract.Document.COLUMN_FLAGS},
                 null, null, null);
         if (cursor == null) return false;
 
@@ -336,10 +367,6 @@ public class FlutterSharePlugin implements MethodChannel.MethodCallHandler, Plug
         return result;
     }
 
-    @Override
-    public boolean onNewIntent(Intent intent) {
-        return processShareIntent(intent);
-    }
 
     public enum ShareType {
         TYPE_PLAIN_TEXT("text/plain"),

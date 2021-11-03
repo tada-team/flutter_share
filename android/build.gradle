@@ -21,7 +21,7 @@ buildscript {
     }
 
     dependencies {
-        classpath 'com.android.tools.build:gradle:3.4.2'
+        classpath 'com.android.tools.build:gradle:3.4.3'
     }
 }
 
@@ -29,6 +29,9 @@ rootProject.allprojects {
     repositories {
         google()
         mavenCentral()
+        maven {
+            url 'http://download.flutter.io'
+        }
     }
 }
 
@@ -48,4 +51,6 @@ android {
 
 dependencies{
     implementation 'androidx.legacy:legacy-support-v4:1.0.0'
+//     Uncomment to have code suggestions
+//    api "io.flutter:flutter_embedding_debug:1.0.0-d1bc06f032f9d6c148ea6b96b48261d6f545004f"
 }
